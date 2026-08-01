@@ -2,7 +2,7 @@ import requests
 import os
 from google import genai
 import feedparser
-
+from bidi.algorithm import get_display
 #
 # os.environ.get("GEMINI_API_KEY")
 
@@ -15,12 +15,15 @@ import feedparser
 # answer = requests.post(url, headers=h, json=d)
 # print(answer.json()) 
 #client = genai.Client()  # automatically reads GEMINI_API_KEY from your environment
+feed = feedparser.parse("https://news.google.com/rss/search?q=site:reuters.com&hl=en-IL&gl=IL&ceid=IL:en")
+# https://www.forbes.com/business/feed/
+# https://techcrunch.com/feed
+feedYnet = feedparser.parse("https://www.ynet.co.il/Integration/StoryRss2.xml")
+# https://www.marketwatch.com/rss/topstories
 
-feed = feedparser.parse("http://neurosciencenews.com/feed/")
-if feed.bozo or feed.status != 200:
-    print(f"Skipping feed, something's wrong")
-for entry in feed.entries[:5]:
-    print(entry.title)
+#https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml
+for entry in feed.entries[0:15]:
+    print(entry.title[::1])
 
 def riddle():
     interaction = client.interactions.create(
