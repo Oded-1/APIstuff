@@ -1,0 +1,408 @@
+@page {
+    size: A4;
+    margin: 10mm 11mm;
+}
+
+/* ---------- Lexend, embedded locally so PDF rendering never depends on
+   network/system fonts ---------- */
+@font-face {
+    font-family: 'Lexend';
+    src: url('fonts/Lexend-Light.ttf') format('truetype');
+    font-weight: 300;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'Lexend';
+    src: url('fonts/Lexend-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'Lexend';
+    src: url('fonts/Lexend-Medium.ttf') format('truetype');
+    font-weight: 500;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'Lexend';
+    src: url('fonts/Lexend-SemiBold.ttf') format('truetype');
+    font-weight: 600;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'Lexend';
+    src: url('fonts/Lexend-Bold.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'Lexend';
+    src: url('fonts/Lexend-ExtraBold.ttf') format('truetype');
+    font-weight: 800;
+    font-style: normal;
+}
+
+:root {
+    --ink: #223046;
+    --muted: #7c8a9a;
+    --paper: #fbfcfe;
+    --card: #ffffff;
+
+    --news-text: #3968c9;
+    --weather-text: #2f8f9a;
+    --calendar-text: #6a63c9;
+    --mind-text: #48566b;
+
+    --up-bg: #e9f7f0;  --up-text: #2f9e6f;
+    --down-bg: #fdecec; --down-text: #d2585c;
+
+    --radius: 10px;
+    --radius-sm: 6px;
+    --card-shadow: 0 1px 2px rgba(34, 48, 70, 0.07), 0 0 0 1px rgba(34, 48, 70, 0.045);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Lexend', Helvetica, Arial, sans-serif;
+    font-weight: 400;
+    font-size: 11pt;
+    line-height: 1.45;
+}
+
+/* Everything below flows as one continuous document. There are no forced
+   page breaks: on a light news day the brief (masthead -> calendar) fills
+   page 1 and markets naturally starts page 2; on a heavy news day the
+   weather/calendar row spills onto page 2 alongside the (compact) markets
+   section instead of forcing a page 3. */
+
+/* ---------- Masthead ---------- */
+.masthead {
+    text-align: center;
+    padding: 7px 0 6px;
+    margin-bottom: 9px;
+    border-top: 3px double var(--ink);
+    border-bottom: 3px double var(--ink);
+}
+.masthead .title {
+    font-family: 'Lexend', Helvetica, Arial, sans-serif;
+    font-weight: 800;
+    font-size: 23pt;
+    letter-spacing: 0.5px;
+    color: var(--ink);
+}
+.masthead .subline {
+    font-family: 'Lexend', Helvetica, Arial, sans-serif;
+    font-weight: 500;
+    font-size: 9pt;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    margin-top: 3px;
+}
+
+/* ---------- Section labels: bold caps + a colored rule, not a pastel pill ---------- */
+.section-label {
+    font-family: 'Lexend', Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    font-size: 10.5pt;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--ink);
+    padding-left: 9px;
+    border-left: 4px solid var(--ink);
+    line-height: 1.15;
+    margin-bottom: 6px;
+}
+.markets-block { break-inside: avoid; }
+.label-news { border-left-color: var(--news-text); }
+.label-weather { border-left-color: var(--weather-text); }
+.label-calendar { border-left-color: var(--calendar-text); }
+.label-mind { border-left-color: var(--mind-text); }
+
+.hairline {
+    border: none;
+    border-top: 1px solid #e4eaf2;
+    margin: 8px 0;
+}
+
+/* ---------- Shared flat-card look: no borders, a hairline-weight shadow
+   for separation instead ---------- */
+.mind-box, .story, .weather-box, .calendar-box, .stock-card, .priority-list {
+    background: var(--card);
+    box-shadow: var(--card-shadow);
+}
+
+/* ---------- Top strip: riddle + concept ---------- */
+.mind-strip {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 8px;
+}
+.mind-box {
+    flex: 1;
+    border-radius: var(--radius);
+    padding: 5px 12px;
+    break-inside: avoid;
+}
+.mind-box .heading {
+    font-family: 'Lexend', Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    font-size: 7pt;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+    margin-bottom: 1px;
+}
+.mind-box p { margin: 0; font-size: 8.3pt; line-height: 1.28; }
+.mind-box strong { color: var(--ink); font-weight: 600; }
+
+/* ---------- News: two-column newspaper flow. Stories are split into the
+   two columns in Python (not CSS `columns:`) so a story can never be cut
+   mid-paragraph by column-balancing -- each column is just a normal block
+   flow of whole stories. ---------- */
+.story-grid {
+    display: flex;
+    gap: 14px;
+}
+.story-col {
+    flex: 1;
+    min-width: 0;
+}
+.story {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin-bottom: 5px;
+    border-radius: var(--radius-sm);
+    padding: 6px 9px;
+    break-inside: avoid;
+}
+.story-thumb {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Lexend', Helvetica, Arial, sans-serif;
+    font-size: 15pt;
+    color: #fff;
+    font-weight: 700;
+}
+.story-body h3 {
+    margin: 0 0 1px 0;
+    font-weight: 600;
+    font-size: 7.4pt;
+    line-height: 1.15;
+}
+.story-body p {
+    margin: 0;
+    font-size: 5.9pt;
+    line-height: 1.2;
+    color: #3f4a58;
+}
+
+.fact-list {
+    list-style: none;
+    margin: 5px 0 0;
+    padding: 0;
+    break-inside: avoid;
+}
+.fact-list li {
+    position: relative;
+    padding-left: 13px;
+    font-size: 7.7pt;
+    line-height: 1.35;
+    color: #3f4a58;
+    margin: 3px 0;
+}
+.fact-list li::before {
+    content: "\2022";
+    position: absolute;
+    left: 1px;
+    top: 0;
+    color: var(--news-text);
+    font-weight: 700;
+}
+
+/* ---------- Weather + calendar row (sized down ~30%, official styling) ---------- */
+.brief-row {
+    display: flex;
+    gap: 14px;
+    margin-top: 8px;
+    break-inside: avoid;
+}
+.brief-row > .col { flex: 1; min-width: 0; }
+
+.weather-box, .calendar-box {
+    border-radius: var(--radius);
+    padding: 4px 5px;
+    height: 100%;
+    overflow: hidden;
+}
+.weather-box { text-align: center; }
+.weather-now {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    line-height: 1;
+}
+.weather-emoji { font-family: 'DejaVu Sans', sans-serif; font-size: 11pt; line-height: 1; }
+.weather-temp { font-size: 11pt; font-family: 'Lexend', Helvetica, Arial, sans-serif; font-weight: 700; line-height: 1; }
+.weather-meta {
+    font-size: 6pt;
+    color: var(--muted);
+    margin-top: 1px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.weather-meta b { color: var(--ink); font-weight: 700; }
+
+.weather-graph {
+    position: relative;
+    width: 65%;
+    margin: 3px auto 0;
+}
+.weather-graph img {
+    width: 100%;
+    display: block;
+}
+.weather-point {
+    position: absolute;
+    margin-top: -2px;
+    transform: translate(-50%, -100%);
+    text-align: center;
+    font-family: 'Lexend', Helvetica, Arial, sans-serif;
+    line-height: 1.15;
+    white-space: nowrap;
+}
+.weather-point .wp-emoji { display: block; font-family: 'DejaVu Sans', sans-serif; font-size: 5.5pt; line-height: 1.2; }
+.weather-point .wp-temp {
+    display: block;
+    font-size: 4.8pt;
+    font-weight: 700;
+    color: var(--ink);
+}
+.weather-point .wp-time {
+    display: block;
+    font-size: 4pt;
+    color: var(--muted);
+}
+
+/* ---------- Calendar ---------- */
+.cal-day-heading {
+    font-family: 'Lexend', Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    font-size: 6pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #4f4a97;
+    margin: 5px 0 1px;
+}
+.cal-day-heading:first-child { margin-top: 0; }
+.cal-event {
+    display: flex;
+    gap: 5px;
+    padding: 1px 0;
+    border-bottom: 1px solid #e4eaf2;
+    font-size: 5.8pt;
+}
+.cal-event:last-child { border-bottom: none; }
+.cal-time {
+    flex: 0 0 34px;
+    font-family: 'Lexend', Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    color: var(--calendar-text);
+}
+.cal-empty { color: var(--muted); font-size: 6pt; font-style: italic; }
+
+/* ---------- Stocks: name + rationale on the left (75%), change % and a
+   compact sparkline with the day's high/low marked on the right (17.5%) ---------- */
+.stock-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: var(--radius-sm);
+    padding: 6px 9px;
+    margin-bottom: 4px;
+    break-inside: avoid;
+}
+.stock-left { width: 75%; padding-right: 6px; }
+.stock-right { width: 17.5%; display: flex; flex-direction: column; align-items: flex-end; }
+.stock-ticker {
+    font-family: 'Lexend', Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    font-size: 10.3pt;
+}
+.stock-explanation {
+    font-size: 7.6pt;
+    line-height: 1.22;
+    color: #3f4a58;
+    margin-top: 1px;
+}
+.stock-change {
+    font-family: 'Lexend', Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    font-size: 7.8pt;
+    padding: 1px 8px;
+    border-radius: 999px;
+    margin-bottom: 3px;
+    white-space: nowrap;
+}
+.up { background: var(--up-bg); color: var(--up-text); }
+.down { background: var(--down-bg); color: var(--down-text); }
+
+.stock-graph { position: relative; width: 100%; }
+.stock-graph img { width: 100%; display: block; }
+.stock-point {
+    position: absolute;
+    transform: translate(-50%, -100%);
+    font-family: 'Lexend', Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    font-size: 5.2pt;
+    line-height: 1;
+    white-space: nowrap;
+    margin-top: -2px;
+}
+.stock-point.hi { color: var(--up-text); }
+.stock-point.lo { color: var(--down-text); transform: translate(-50%, 4px); margin-top: 2px; }
+
+/* ---------- Priorities ---------- */
+.priority-list {
+    border-radius: var(--radius);
+    padding: 6px 10px;
+    break-inside: avoid;
+}
+.priority-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.priority-line:last-child { margin-bottom: 0; }
+.priority-num {
+    font-family: 'Lexend', Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    font-size: 11pt;
+    color: var(--muted);
+}
+.priority-rule {
+    flex: 1;
+    border-bottom: 1px solid #e4eaf2;
+    height: 11px;
+}
+
+.footer-note {
+    text-align: center;
+    font-size: 7.5pt;
+    color: var(--muted);
+    margin-top: 8px;
+    font-family: 'Lexend', Helvetica, Arial, sans-serif;
+}

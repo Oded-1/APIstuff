@@ -23,6 +23,8 @@ from googleapiclient.errors import HttpError
 # If modifying these scopes, delete the file token.json.
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
 
+client = genai.Client()  # automatically reads GEMINI_API_KEY from your environment
+
 
 def calender():
   """Shows basic usage of the Google Calendar API.
@@ -74,26 +76,111 @@ def calender():
     )
     events = events_result.get("items", [])
 
+    events_result = (
+        service.events()
+        .list(
+            calendarId="4349a07cc75de41880123696fc22ee4379a57509f673d4db9629138cb1aa28b5@group.calendar.google.com",
+            timeMin=today,
+            singleEvents=True,
+            timeMax=afterXhr,
+        )
+        .execute()
+    )
+
+    events = events + (events_result.get("items", []))
+
     if not events:
       print("No upcoming events found.")
       return
 
-    # Prints the start and name of the next 10 events
+    # returns the start and name of the next 10 events
+    events.sort(key=lambda e: e["start"].get("dateTime", e["start"].get("date")))
+
+    eventsWithTime = ""
     for event in events:
       start = event["start"].get("dateTime", event["start"].get("date"))
-      print(start, event["summary"])
+      end = event["end"].get("dateTime", event["end"].get("date"))
+      eventsWithTime = eventsWithTime + f"{start} until {end} {event['summary']}\n"
 
+    return(eventsWithTime)
+  
   except HttpError as error:
     print(f"An error occurred: {error}")
 
 
-
-calender()
-
-
 def stocks():
-    googleStock = yf.Ticker("GOOG")
-    return (googleStock.history(period='3d', interval='30m', rounding=True))
+    tickers = {
+        "GOOG": "GOOG",
+        "S&P500": "^GSPC",
+        "USD/ILS": "ILS=X",
+        "Nvidia": "NVDA",
+    }
+
+    histories = {
+        name: yf.Ticker(symbol).history(period='3d', interval='30m', rounding=True)
+        for name, symbol in tickers.items()
+    }
+
+    moves = {
+        name: (history["Close"].iloc[-1] / history["Close"].iloc[0] - 1) * 100
+        for name, history in histories.items()
+    }
+
+    prompt = "Prompt: Below are tickers I track with their % price change over the last 3 days. Since " \
+            "this is accessed via API and billed per token, avoid unnecessary filler — no greetings, no " \
+            "preamble, no closing remarks, no restating these instructions. But do not sacrifice depth " \
+            "for the sake of brevity — the goal is efficient wording, not shallow content. Task: for " \
+            "each ticker, give an information-dense explanation (up to 4 sentences) of what's driving " \
+            "its recent movement — recent news, earnings, macro factors, sector trends, whatever is " \
+            "most relevant(try focusing on today's movment). Use your own general knowledge to add relevant context or background if it " \
+            "helps me understand the move better. Output format (plain text, no extra commentary): " \
+            "[Ticker]: [explanation] — one line per ticker, in the order given, nothing else. Here are " \
+            "the tickers:\n"
+    prompt += "\n".join(f"{name}: {change_pct:+.2f}%" for name, change_pct in moves.items())
+
+    interaction = client.interactions.create(
+        model="gemini-3.5-flash-lite",
+        input=prompt
+    )
+
+    explanations = {}
+    for line in interaction.output_text.strip().splitlines():
+        if ":" in line:
+            name, explanation = line.split(":", 1)
+            explanations[name.strip()] = explanation.strip()
+
+    return {
+        name: {
+            "history": histories[name],
+            "change_pct": moves[name],
+            "explanation": explanations.get(name, ""),
+        }
+        for name in tickers
+    }
+
+WEATHER_CODES = {
+    0: ("☀️", "Clear sky"),
+    1: ("🌤️", "Mostly clear"),
+    2: ("⛅", "Partly cloudy"),
+    3: ("☁️", "Overcast"),
+    45: ("🌫️", "Fog"),
+    48: ("🌫️", "Fog"),
+    51: ("🌦️", "Light drizzle"),
+    53: ("🌦️", "Drizzle"),
+    55: ("🌧️", "Dense drizzle"),
+    61: ("🌧️", "Light rain"),
+    63: ("🌧️", "Rain"),
+    65: ("🌧️", "Heavy rain"),
+    71: ("🌨️", "Light snow"),
+    73: ("🌨️", "Snow"),
+    75: ("❄️", "Heavy snow"),
+    80: ("🌦️", "Rain showers"),
+    81: ("🌧️", "Rain showers"),
+    82: ("⛈️", "Violent showers"),
+    95: ("⛈️", "Thunderstorm"),
+    96: ("⛈️", "Thunderstorm w/ hail"),
+    99: ("⛈️", "Thunderstorm w/ hail"),
+}
 
 def weather():
     # Setup the Open-Meteo API client with cache and retry on error
@@ -107,7 +194,7 @@ def weather():
     params = {
         "latitude": 31.9987,
         "longitude": 34.9456,
-        "hourly": "temperature_2m",
+        "hourly": "temperature_2m,weather_code",
         "timezone": "Europe/Moscow",
         "forecast_days": 1,
     }
@@ -123,6 +210,7 @@ def weather():
     # Process hourly data. The order of variables needs to be the same as requested.
     hourly = response.Hourly()
     hourly_temperature_2m = hourly.Variables(0).ValuesAsNumpy()
+    hourly_weather_code = hourly.Variables(1).ValuesAsNumpy()
 
     hourly_data = {
         "date": pd.date_range(
@@ -134,8 +222,15 @@ def weather():
     }
 
     hourly_data["temperature_2m"] = hourly_temperature_2m
+    hourly_data["weather_code"] = hourly_weather_code
 
     hourly_dataframe = pd.DataFrame(data = hourly_data)
+
+    for _, row in hourly_dataframe.iterrows():
+        code = int(row["weather_code"])
+        emoji, description = WEATHER_CODES.get(code, ("", f"Unknown code {code}"))
+        print(f"{row['date']}: {row['temperature_2m']}°C {emoji} {description} (code {code})")
+
     return ("\nHourly data\n", hourly_dataframe)
 
 # os.environ.get("GEMINI_API_KEY")
@@ -148,7 +243,6 @@ def weather():
 
 # answer = requests.post(url, headers=h, json=d)
 # print(answer.json()) 
-#client = genai.Client()  # automatically reads GEMINI_API_KEY from your environment
 
 
 
@@ -165,25 +259,34 @@ def news():
             "and where/when it took place. Use your own general knowledge to add relevant context or " \
             "background if it helps me understand the story better, not just what's implied by the title. " \
             "After the 6 main summaries, you may optionally add a few more items worth knowing — " \
-            "but these must be under one sentence each, just the core fact. Output format " \
-            "(plain text, no extra commentary): Top Stories: [Title] [Deeper summary] ... (up to 6) " \
-            "Also worth knowing: [One-line fact]  Here are the titles:"
+            "but these must be under one sentence each, just the core fact. Output format must follow " \
+            "this exact structure, with no deviation and no extra commentary: for each of the 6 stories, " \
+            "one line reading '<N>. TITLE: <title>' immediately followed by a line reading " \
+            "'SUMMARY: <deeper summary>' (N starting at 1). After all 6, a line containing only 'ALSO:', " \
+            "followed by one '- <one-line fact>' line per additional item. Example shape:\n" \
+            "1. TITLE: Example headline\n" \
+            "SUMMARY: Example deeper summary.\n" \
+            "2. TITLE: Example headline two\n" \
+            "SUMMARY: Example deeper summary two.\n" \
+            "ALSO:\n" \
+            "- Example one-line fact.\n" \
+            "Here are the titles:"
     titles = ""
 
-    sourcesHeb = {"https://www.ynet.co.il/Integration/StoryRss2.xml": 6}
-    sourcesEng = {"https://news.google.com/rss/search?q=site:reuters.com&hl=en-IL&gl=IL&ceid=IL:en": 4,
+    
+    sources = {"https://news.google.com/rss/search?q=site:reuters.com&hl=en-IL&gl=IL&ceid=IL:en": 4,
             "https://www.forbes.com/business/feed/": 5,
             "https://techcrunch.com/feed": 5,
             "https://www.marketwatch.com/rss/topstories": 5,
-            "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml": 4}
+            "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml": 4,
+            "https://www.ynet.co.il/Integration/StoryRss2.xml": 6}
 
-    for url in sourcesHeb:
-        for entry in feedparser.parse(url).entries[0:sourcesHeb[url]]:
-            titles = titles + entry.title[::-1] + "\n"
-    for url in sourcesEng:
-        for entry in feedparser.parse(url).entries[0:sourcesEng[url]]:
+    
+    for url in sources:
+        for entry in feedparser.parse(url).entries[0:sources[url]]:
             titles = titles + entry.title + "\n"
 
+    print(prompt+titles)
     interaction = client.interactions.create(
         model="gemini-3.5-flash-lite",
         input= prompt+titles
@@ -204,3 +307,4 @@ def conceptOfDay():
     )
     return interaction.output_text
 
+print(calender())
